@@ -24,7 +24,9 @@ const AnalysisScreen = ({ selectedIndices, intention, onReset }: AnalysisScreenP
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await fetch('/api/predict', {
+                // Use env var for API URL or default to empty string (which implies same origin/proxy)
+                const apiUrl = import.meta.env.VITE_API_URL || '';
+                const res = await fetch(`${apiUrl}/api/predict`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

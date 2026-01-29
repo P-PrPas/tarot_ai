@@ -14,6 +14,17 @@ load_dotenv()
 
 app = FastAPI()
 
+# Configure CORS
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Specific origins are safer, but "*" is good for starting out/flexibility
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Configure Gemini
 GENAI_API_KEY = os.getenv("GENAI_API_KEY")
 client = None
