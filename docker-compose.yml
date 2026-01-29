@@ -9,12 +9,10 @@ services:
       - "8000:8000"
     environment:
       - GENAI_API_KEY=${GENAI_API_KEY}
-    volumes:
-      - ./public/tarot-images.json:/app/tarot-images.json
 
   frontend:
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile
     ports:
       - "80:80"

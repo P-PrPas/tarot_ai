@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ backend/
 
 # Copy Data (Placed in root so main.py finds it as 'tarot-images.json')
-COPY public/tarot-images.json .
+COPY backend/tarot-images.json .
 
 EXPOSE 8000
 
