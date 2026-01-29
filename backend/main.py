@@ -18,7 +18,11 @@ app = FastAPI()
 GENAI_API_KEY = os.getenv("GENAI_API_KEY")
 client = None
 if GENAI_API_KEY:
-    client = genai.Client(api_key=GENAI_API_KEY)
+    try:
+        client = genai.Client(api_key=GENAI_API_KEY, http_options={'api_version': 'v1beta'})
+        print("Gemini Client Configured (v1beta)")
+    except Exception as e:
+        print(f"Failed to configure Gemini Client: {e}")
 
 # Load Tarot Data
 TAROT_DATA = {}
@@ -26,9 +30,9 @@ def load_tarot_data():
     global TAROT_DATA
     # Try multiple paths for flexibility (dev vs docker)
     possible_paths = [
-        "public/tarot-images.json", 
-        "../public/tarot-images.json",
-        "tarot-images.json" # If copied to root in docker
+        "tarot-images.json", # In docker backend folder
+        "../frontend/public/tarot-images.json", # Local dev relative
+        "public/tarot-images.json" # Fallback
     ]
     for path in possible_paths:
         if os.path.exists(path):
@@ -67,7 +71,6 @@ async def predict(req: PredictRequest):
     indices = req.selected_indices
     if not indices or len(indices) != 4:
         # Randomize if not provided or invalid count
-        # Ensure we don't crash if deck is smaller than 4 (unlikely)
         sample_size = min(4, total_cards)
         indices = random.sample(range(total_cards), sample_size)
     
@@ -81,17 +84,10 @@ async def predict(req: PredictRequest):
             selected_cards.append(random.choice(cards_info))
 
     # Construct Prompt
-    # Logic from PRD:
-    # Card 1: The Situation / The Past
-    # Card 2: The Challenge / The Present
-    # Card 3: The Advice / Action
-    # Card 4: The Outcome / The Future
-    
     positions = ["The Situation / The Past", "The Challenge / The Present", "The Advice / Action", "The Outcome / The Future"]
     
     cards_context = ""
     for i, card in enumerate(selected_cards):
-        # Handle cases where card data might be missing fields
         name = card.get("name", "Unknown")
         meanings = card.get("meanings", {}).get("light", ["No meaning"])
         meaning_text = meanings[0] if meanings else "No meaning"
@@ -108,13 +104,21 @@ async def predict(req: PredictRequest):
     """
     
     try:
+        # Log the attempt
+        print(f"Calling Gemini API with model 'gemini-3-flash-preview' for prompt length: {len(prompt)}")
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-3-flash-preview',
             contents=prompt
         )
         prediction = response.text
     except Exception as e:
-        print(f"Gemini Error: {e}")
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Gemini Error Detailed: {error_details}")
+        # Try to print response text if available in error structure (depends on SDK)
+        if hasattr(e, 'response'):
+             print(f"Gemini Error Response: {e.response}")
+        
         raise HTTPException(status_code=500, detail=f"AI Service Error: {str(e)}")
 
     # Format response
@@ -128,37 +132,3 @@ async def predict(req: PredictRequest):
         })
 
     return {"cards": resp_cards, "prediction": prediction}
-
-
-# Serve Frontend
-# Logic:
-# 1. If 'dist' exists (built frontend), serve static from it.
-# 2. If 'public' exists (dev assets), serve it too for direct access if needed.
-
-dist_path = "../dist"
-public_path = "../public"
-
-# Mount /assets if using Vite build
-if os.path.exists(os.path.join(dist_path, "assets")):
-    app.mount("/assets", StaticFiles(directory=os.path.join(dist_path, "assets")), name="assets")
-
-# Mount /cards from public if in dev, or from dist if built
-# If dist exists, images should be in dist/cards (if vite copied them)
-if os.path.exists(os.path.join(dist_path, "cards")):
-    app.mount("/cards", StaticFiles(directory=os.path.join(dist_path, "cards")), name="cards")
-elif os.path.exists(os.path.join(public_path, "cards")):
-     app.mount("/cards", StaticFiles(directory=os.path.join(public_path, "cards")), name="cards-dev")
-
-# Mount /static as requested
-if os.path.exists(public_path):
-    app.mount("/static", StaticFiles(directory=public_path), name="static")
-
-@app.get("/")
-async def serve_index():
-    if os.path.exists(os.path.join(dist_path, "index.html")):
-        return FileResponse(os.path.join(dist_path, "index.html"))
-    return {"message": "Frontend not built. Please run `npm run build` or use Vite dev server."}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
