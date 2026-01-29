@@ -17,14 +17,14 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
     const handleSelect = (index: number) => {
         if (selectedIndices.includes(index)) return
 
-        if (selectedIndices.length >= 4) {
+        if (selectedIndices.length >= 3) {
             return
         }
 
         const newIndices = [...selectedIndices, index]
         setSelectedIndices(newIndices)
 
-        if (newIndices.length === 4) {
+        if (newIndices.length === 3) {
             toast({
                 title: "Destiny Chosen",
                 description: "The stars align...",
@@ -47,10 +47,10 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
                     fontFamily="heading"
                     textShadow="0 0 10px rgba(214, 158, 46, 0.4)"
                 >
-                    Select 4 Cards
+                    Select 3 Cards
                 </Heading>
                 <Text color="gray.400">
-                    ({selectedIndices.length} / 4 chosen)
+                    ({selectedIndices.length} / 3 chosen)
                 </Text>
             </VStack>
 

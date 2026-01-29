@@ -69,9 +69,9 @@ async def predict(req: PredictRequest):
 
     # Select cards
     indices = req.selected_indices
-    if not indices or len(indices) != 4:
+    if not indices or len(indices) != 3:
         # Randomize if not provided or invalid count
-        sample_size = min(4, total_cards)
+        sample_size = min(3, total_cards)
         indices = random.sample(range(total_cards), sample_size)
     
     selected_cards = []
@@ -85,12 +85,11 @@ async def predict(req: PredictRequest):
 
     # Construct Prompt
     # Logic from PRD:
-    # Card 1: The Situation / The Past
-    # Card 2: The Challenge / The Present
-    # Card 3: The Advice / Action
-    # Card 4: The Outcome / The Future
+    # Card 1: The Past / The Root
+    # Card 2: The Present / The Situation
+    # Card 3: The Future / The Advice
     
-    positions = ["1. The Situation / The Past", "2. The Challenge / The Present", "3. The Advice / Action", "4. The Outcome / The Future"]
+    positions = ["1. The Past / The Root", "2. The Present / The Situation", "3. The Future / The Advice"]
     
     cards_context = ""
     for i, card in enumerate(selected_cards):
@@ -114,7 +113,7 @@ async def predict(req: PredictRequest):
 
     prompt = f"""
         You are a mystical, wise, and empathetic Tarot Reader AI.
-        Your task is to interpret a 4-card spread for a user based on their question.
+        Your task is to interpret a 3-card spread for a user based on their question.
 
         Here is the User's Question: "{req.question}"
 
@@ -123,7 +122,7 @@ async def predict(req: PredictRequest):
 
         Instructions:
         1. Analyze how each card relates to the user's question based on its position.
-        2. Synthesize the meanings of all 4 cards together into a coherent narrative.
+        2. Synthesize the meanings of all 3 cards together into a coherent narrative.
         3. Provide a direct answer or guidance relevant to the question.
         4. Use a supportive and mystical tone, but keep the advice practical.
         5. Structure your response clearly with headings using Markdown.
