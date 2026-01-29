@@ -35,6 +35,10 @@ if GENAI_API_KEY:
     except Exception as e:
         print(f"Failed to configure Gemini Client: {e}")
 
+@app.get("/")
+def read_root():
+    return {"status": "ok", "service": "Tarot AI Backend"}
+
 # Load Tarot Data
 TAROT_DATA = {}
 def load_tarot_data():
