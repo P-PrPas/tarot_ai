@@ -125,8 +125,27 @@ async def predict(req: PredictRequest):
         2. Synthesize the meanings of all 3 cards together into a coherent narrative.
         3. Provide a direct answer or guidance relevant to the question.
         4. Use a supportive and mystical tone, but keep the advice practical.
-        5. Structure your response clearly with headings using Markdown.
-        6. **Answer in Thai language (ภาษาไทย) only.**
+        5. **Answer in Thai language (ภาษาไทย) only.**
+
+        **CRITICAL: You MUST follow this exact Markdown format for the response to be parsed correctly:**
+
+        [Introductory greeting and general energy of the spread]
+
+        ---
+
+        ### 1. [Card 1 Name]
+        [Interpretation for Card 1]
+
+        ### 2. [Card 2 Name]
+        [Interpretation for Card 2]
+
+        ### 3. [Card 3 Name]
+        [Interpretation for Card 3]
+
+        ---
+
+        ### บทสรุปและคำชี้แนะ
+        [Summary and actionable advice]
     """
     
     try:
