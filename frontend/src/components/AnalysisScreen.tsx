@@ -26,6 +26,7 @@ const AnalysisScreen = ({ selectedIndices, intention, onReset }: AnalysisScreenP
             try {
                 // Use env var for API URL or default to empty string (which implies same origin/proxy)
                 const apiUrl = import.meta.env.VITE_API_URL || '';
+                console.log("Debug: API_URL is", apiUrl);
                 const res = await fetch(`${apiUrl}/api/predict`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
