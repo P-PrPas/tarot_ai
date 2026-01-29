@@ -1,15 +1,61 @@
-import { Box, VStack, Heading, Text, Image, Button, SimpleGrid } from '@chakra-ui/react'
+import { Box, VStack, Heading, Text, Image, Button, SimpleGrid, Spinner } from '@chakra-ui/react'
 import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
 
 const MotionBox = motion(Box)
 
+interface CardData {
+    name: string
+    img: string
+    position: string
+}
+
 interface AnalysisScreenProps {
-    cardIds: string[]
+    selectedIndices: number[]
     intention: string
     onReset: () => void
 }
 
-const AnalysisScreen = ({ cardIds, intention, onReset }: AnalysisScreenProps) => {
+const AnalysisScreen = ({ selectedIndices, intention, onReset }: AnalysisScreenProps) => {
+    const [loading, setLoading] = useState(true)
+    const [cards, setCards] = useState<CardData[]>([])
+    const [prediction, setPrediction] = useState<string>('')
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const res = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question: intention,
+                        selected_indices: selectedIndices
+                    })
+                })
+                if (!res.ok) throw new Error("Failed to fetch")
+                const data = await res.json()
+                setCards(data.cards)
+                setPrediction(data.prediction)
+            } catch (err) {
+                console.error(err)
+                setPrediction("The mists are too thick. The Oracle could not see clearly. Please try again.")
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchData()
+    }, [intention, selectedIndices])
+
+    if (loading) {
+        return (
+            <VStack spacing={8} py={20} minH="100vh" justify="center">
+                <Spinner size="xl" color="brand.400" thickness="4px" />
+                <Text color="brand.200" fontSize="lg" animate={{ opacity: [0.5, 1, 0.5] }} as={motion.p} transition={{ repeat: Infinity, duration: 2 } as any}>
+                    Consulting the Spirits...
+                </Text>
+            </VStack>
+        )
+    }
 
     return (
         <VStack spacing={8} py={10} minH="100vh" px={4} overflowX="hidden">
@@ -21,7 +67,7 @@ const AnalysisScreen = ({ cardIds, intention, onReset }: AnalysisScreenProps) =>
             </VStack>
 
             <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4} w="full" maxW="1000px">
-                {cardIds.map((id, index) => (
+                {cards.map((card, index) => (
                     <MotionBox
                         key={index}
                         initial={{ opacity: 0, y: 50, rotateY: 180 }}
@@ -38,14 +84,26 @@ const AnalysisScreen = ({ cardIds, intention, onReset }: AnalysisScreenProps) =>
                                 borderColor="brand.600"
                                 _hover={{ borderColor: 'brand.400', transform: 'translateY(-10px)' }}
                                 transition="all 0.3s"
+                                position="relative"
                             >
+                                <Box
+                                    position="absolute"
+                                    top={0}
+                                    left={0}
+                                    bg="blackAlpha.700"
+                                    w="full"
+                                    p={1}
+                                    textAlign="center"
+                                >
+                                    <Text fontSize="xs" color="brand.200">{card.position}</Text>
+                                </Box>
                                 <Image
-                                    src={`/cards/${id}`}
-                                    alt={`Tarot Card ${index + 1}`}
+                                    src={`/cards/${card.img}`}
+                                    alt={card.name}
                                     objectFit="cover"
                                 />
                             </Box>
-                            <Text color="brand.200" fontSize="sm" fontWeight="bold">Card {index + 1}</Text>
+                            <Text color="brand.200" fontSize="sm" fontWeight="bold">{card.name}</Text>
                         </VStack>
                     </MotionBox>
                 ))}
@@ -67,9 +125,9 @@ const AnalysisScreen = ({ cardIds, intention, onReset }: AnalysisScreenProps) =>
                     The Oracle Speaks
                 </Heading>
 
-                <Text color="gray.300" fontSize="lg" lineHeight="tall">
-                    (AI Analysis will interpret these {cardIds.length} cards: <b>{cardIds.join(', ')}</b>)
-                </Text>
+                <Box color="gray.300" fontSize="lg" lineHeight="tall" whiteSpace="pre-wrap">
+                    {prediction}
+                </Box>
 
                 <Box w="full" h="1px" bg="brand.800" />
 

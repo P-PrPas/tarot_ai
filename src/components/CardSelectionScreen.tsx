@@ -5,14 +5,13 @@ import { useState } from 'react'
 const MotionBox = motion(Box)
 
 interface CardSelectionScreenProps {
-    onComplete: (cardIds: string[]) => void
+    onComplete: (indices: number[]) => void
 }
 
-const CARDS_COUNT = 22
+const CARDS_COUNT = 78
 
 const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
     const [selectedIndices, setSelectedIndices] = useState<number[]>([])
-    const [selectedIds, setSelectedIds] = useState<string[]>([])
     const toast = useToast()
 
     const handleSelect = (index: number) => {
@@ -23,20 +22,9 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
         }
 
         const newIndices = [...selectedIndices, index]
-
-        // Random card logic
-        let cardId: string
-        do {
-            const randomNum = Math.floor(Math.random() * 22)
-            cardId = `m${randomNum.toString().padStart(2, '0')}.jpg`
-        } while (selectedIds.includes(cardId)) // Prevent duplicate cards in a hand
-
-        const newIds = [...selectedIds, cardId]
-
         setSelectedIndices(newIndices)
-        setSelectedIds(newIds)
 
-        if (newIds.length === 4) {
+        if (newIndices.length === 4) {
             toast({
                 title: "Destiny Chosen",
                 description: "The stars align...",
@@ -46,7 +34,7 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
                 position: 'top'
             })
             setTimeout(() => {
-                onComplete(newIds)
+                onComplete(newIndices)
             }, 1000)
         }
     }

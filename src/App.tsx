@@ -10,21 +10,21 @@ type Step = 'intention' | 'select' | 'analysis'
 function App() {
   const [step, setStep] = useState<Step>('intention')
   const [intention, setIntention] = useState('')
-  const [selectedCards, setSelectedCards] = useState<string[]>([])
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([])
 
   const handleIntentionSubmit = (text: string) => {
     setIntention(text)
     setStep('select')
   }
 
-  const handleCardsSelected = (ids: string[]) => {
-    setSelectedCards(ids)
+  const handleCardsSelected = (indices: number[]) => {
+    setSelectedIndices(indices)
     setStep('analysis')
   }
 
   const handleReset = () => {
     setIntention('')
-    setSelectedCards([])
+    setSelectedIndices([])
     setStep('intention')
   }
 
@@ -61,7 +61,7 @@ function App() {
             exit={{ opacity: 0 }}
           >
             <AnalysisScreen
-              cardIds={selectedCards}
+              selectedIndices={selectedIndices}
               intention={intention}
               onReset={handleReset}
             />
