@@ -84,23 +84,50 @@ async def predict(req: PredictRequest):
             selected_cards.append(random.choice(cards_info))
 
     # Construct Prompt
-    positions = ["The Situation / The Past", "The Challenge / The Present", "The Advice / Action", "The Outcome / The Future"]
+    # Logic from PRD:
+    # Card 1: The Situation / The Past
+    # Card 2: The Challenge / The Present
+    # Card 3: The Advice / Action
+    # Card 4: The Outcome / The Future
+    
+    positions = ["1. The Situation / The Past", "2. The Challenge / The Present", "3. The Advice / Action", "4. The Outcome / The Future"]
     
     cards_context = ""
     for i, card in enumerate(selected_cards):
+        # Extract rich details as per POC
         name = card.get("name", "Unknown")
-        meanings = card.get("meanings", {}).get("light", ["No meaning"])
-        meaning_text = meanings[0] if meanings else "No meaning"
+        arcana = card.get("arcana", "Unknown")
+        keywords = ", ".join(card.get("keywords", []))
+        meanings_light = ", ".join(card.get("meanings", {}).get("light", []))
+        meanings_shadow = ", ".join(card.get("meanings", {}).get("shadow", []))
+        fortune = ", ".join(card.get("fortune_telling", []))
+        
         pos = positions[i] if i < len(positions) else f"Card {i+1}"
-        cards_context += f"{i+1}. {pos}: {name} ({meaning_text})\n"
+        
+        cards_context += f"""
+        Position {pos}: {name} (Arcana: {arcana})
+        - Keywords: {keywords}
+        - Meanings (Light): {meanings_light}
+        - Meanings (Shadow): {meanings_shadow}
+        - Fortune Telling: {fortune}
+        """
 
     prompt = f"""
-    You are a mystical Tarot Reader AI. Interpret these 4 cards based on the user's question: "{req.question}"
-    
-    The Cards:
-    {cards_context}
-    
-    Provide a concise but deep interpretation in Markdown format. Address the user directly.
+        You are a mystical, wise, and empathetic Tarot Reader AI.
+        Your task is to interpret a 4-card spread for a user based on their question.
+
+        Here is the User's Question: "{req.question}"
+
+        Here are the drawn cards and their meanings:
+        {cards_context}
+
+        Instructions:
+        1. Analyze how each card relates to the user's question based on its position.
+        2. Synthesize the meanings of all 4 cards together into a coherent narrative.
+        3. Provide a direct answer or guidance relevant to the question.
+        4. Use a supportive and mystical tone, but keep the advice practical.
+        5. Structure your response clearly with headings using Markdown.
+        6. **Answer in Thai language (ภาษาไทย) only.**
     """
     
     try:
