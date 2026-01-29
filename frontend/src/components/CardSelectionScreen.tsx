@@ -1,8 +1,9 @@
-import { Box, VStack, Heading, Text, useToast, HStack, useBreakpointValue } from '@chakra-ui/react'
+import { Box, VStack, Heading, Text, useToast, HStack, useBreakpointValue, Button } from '@chakra-ui/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useRef } from 'react'
 
 const MotionBox = motion(Box)
+const MotionButton = motion(Button)
 
 interface CardSelectionScreenProps {
     onComplete: (indices: number[]) => void
@@ -13,37 +14,44 @@ const SELECTION_LIMIT = 3
 
 const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
     const [selectedIndices, setSelectedIndices] = useState<number[]>([])
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
     const toast = useToast()
 
-    // Check for mobile (useBreakpointValue is cleaner than media queries in Chakra)
+    // Check for mobile
     const isMobile = useBreakpointValue({ base: true, md: false })
-
-    // Refs for mobile scroll snapping if needed, but CSS handles most
     const scrollContainerRef = useRef<HTMLDivElement>(null)
 
     const handleSelect = (index: number) => {
         if (selectedIndices.includes(index)) return
 
         if (selectedIndices.length >= SELECTION_LIMIT) {
+            toast({
+                title: "Path Chosen",
+                description: "You have already selected 3 cards. Reveal your fate!",
+                status: "info",
+                duration: 2000,
+                isClosable: true,
+                position: 'top'
+            })
             return
         }
 
         const newIndices = [...selectedIndices, index]
         setSelectedIndices(newIndices)
+    }
 
-        if (newIndices.length === SELECTION_LIMIT) {
-            toast({
-                title: "Destiny Chosen",
-                description: "The stars align...",
-                status: "success",
-                duration: 2000,
-                isClosable: true,
-                position: 'top'
-            })
-            setTimeout(() => {
-                onComplete(newIndices)
-            }, 1000)
-        }
+    const handleReveal = () => {
+        toast({
+            title: "Destiny Chosen",
+            description: "The stars align...",
+            status: "success",
+            duration: 2000,
+            isClosable: true,
+            position: 'top'
+        })
+        setTimeout(() => {
+            onComplete(selectedIndices)
+        }, 1000)
     }
 
     // --- FAN GEOMETRY (Desktop) ---
@@ -54,15 +62,35 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
 
     const getCardStyle = (index: number) => {
         const angleStep = FAN_ANGLE / (CARDS_COUNT - 1)
-        const rotation = START_ANGLE + (index * angleStep)
-        const rad = (rotation * Math.PI) / 180
+        let rotation = START_ANGLE + (index * angleStep)
 
+        // Neighbor Pushing Logic
+        if (hoveredIndex !== null && !isMobile) {
+            const distance = index - hoveredIndex
+            const PUSH_STRENGTH = 3 // Degrees to push
+            const INFLUENCE_RANGE = 5 // How many cards away are affected
+
+            if (Math.abs(distance) < INFLUENCE_RANGE && Math.abs(distance) > 0) {
+                // Push away from the hovered card
+                // If distance is negative (left side), push negative (more left)
+                // If distance is positive (right side), push positive (more right)
+                const pushFactor = 1 - (Math.abs(distance) / INFLUENCE_RANGE) // 1 at neighbor, 0 at outer edge
+                const pushDir = distance > 0 ? 1 : -1
+                rotation += pushDir * PUSH_STRENGTH * pushFactor
+            }
+        }
+
+        const rad = (rotation * Math.PI) / 180
         const x = RADIUS * Math.sin(rad)
         const y = - RADIUS * Math.cos(rad)
 
         const centerIndex = CARDS_COUNT / 2
         const distFromCenter = Math.abs(index - centerIndex)
-        const zIndex = 100 - Math.floor(distFromCenter)
+        // Base Z-index
+        let zIndex = 100 - Math.floor(distFromCenter)
+
+        // Hover Z-index boost logic is handled in Motion Props mostly, 
+        // but we can adjust base if needed. keeping simple for now.
 
         return { x, y, rotation, zIndex }
     }
@@ -111,14 +139,13 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
                                 display="flex"
                                 alignItems="center"
                                 justifyContent="center"
-                                bg="blackAlpha.600"
-                                boxShadow="inset 0 4px 20px rgba(0,0,0,0.9), 0 1px 0 rgba(255,255,255,0.1)"
-                                border="1px solid"
-                                borderColor="whiteAlpha.100"
+                                bg="transparent" // Cleaner base
+                                border="1px dashed" // UX: Clearly an empty slot
+                                borderColor={isFilled ? "transparent" : "whiteAlpha.400"}
                             >
                                 {isFilled ? (
                                     <MotionBox
-                                        layoutId={`card-${cardIndex}`} // Shared layout ID for seamless transition
+                                        layoutId={`card-${cardIndex}`}
                                         initial={{ opacity: 0, scale: 0.5, y: isMobile ? 50 : 100 }}
                                         animate={{ opacity: 1, scale: 1, y: 0 }}
                                         w="full"
@@ -131,6 +158,8 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
                                         border="1px solid"
                                         borderColor="brand.400"
                                         bg="brand.900"
+                                        position="relative" // Ensure z-index works if needed
+                                        zIndex={1}
                                     >
                                         <Box
                                             w="full" h="full" borderRadius="lg"
@@ -138,10 +167,17 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
                                             bgSize="10px 10px"
                                             opacity={0.5}
                                         />
+                                        {/* Card Content Placeholder */}
+                                        <Box
+                                            position="absolute"
+                                            inset="4px"
+                                            border="1px solid rgba(214, 158, 46, 0.3)"
+                                            borderRadius="md"
+                                        />
                                         <Text fontWeight="bold" color="white" fontSize={isMobile ? "xl" : "2xl"} position="absolute">{i + 1}</Text>
                                     </MotionBox>
                                 ) : (
-                                    <Text color="whiteAlpha.200" fontSize={isMobile ? "xl" : "3xl"} fontFamily="serif">
+                                    <Text color="whiteAlpha.300" fontSize={isMobile ? "xl" : "3xl"} fontFamily="serif">
                                         {['I', 'II', 'III'][i]}
                                     </Text>
                                 )}
@@ -149,6 +185,27 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
                         )
                     })}
                 </HStack>
+                {/* Reveal Button */}
+                <AnimatePresence>
+                    {selectedIndices.length === SELECTION_LIMIT && (
+                        <MotionButton
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            colorScheme="brand"
+                            variant="solid"
+                            size="lg"
+                            bg="brand.500"
+                            _hover={{ bg: "brand.400", boxShadow: "0 0 15px rgba(214, 158, 46, 0.6)" }}
+                            onClick={handleReveal}
+                            fontFamily="heading"
+                            letterSpacing="wide"
+                            boxShadow="0 0 10px rgba(0,0,0,0.5)"
+                        >
+                            REVEAL YOUR FATE
+                        </MotionButton>
+                    )}
+                </AnimatePresence>
             </VStack>
 
             {/* --- DECK DISPLAY SWITCH --- */}
@@ -158,7 +215,7 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
                 <Box
                     w="full"
                     flex={1}
-                    mt={8}
+                    mt={4}
                     overflowX="auto"
                     overflowY="hidden"
                     css={{
@@ -170,7 +227,7 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
                     alignItems="center"
                     px="50vw" // Push first and last item to center
                 >
-                    <HStack spacing={-12} pb={10} pr="50vw"> {/* Negative spacing for overlap */}
+                    <HStack spacing={-10} pb={10} pr="50vw"> {/* Negative spacing for overlap */}
                         <AnimatePresence>
                             {Array.from({ length: CARDS_COUNT }).map((_, i) => {
                                 if (selectedIndices.includes(i)) return null
@@ -183,9 +240,9 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
                                         borderRadius="lg"
                                         bg="brand.900"
                                         border="1px solid"
-                                        borderColor="brand.700"
+                                        borderColor="brand.600" // Visually lighter border
                                         cursor="pointer"
-                                        boxShadow="0 4px 10px rgba(0,0,0,0.5)"
+                                        boxShadow="0 4px 15px rgba(0,0,0,0.8)" // Deeper shadow
                                         onClick={() => handleSelect(i)}
                                         initial={{ opacity: 0, scale: 0.8 }}
                                         animate={{ opacity: 1, scale: 1 }}
@@ -203,14 +260,22 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
                                             position="relative"
                                         >
                                             <Box w="full" h="full" bgGradient="linear(to-br, #1a202c, #2d3748)" />
+                                            {/* Enhanced Texture */}
                                             <Box
-                                                position="absolute" inset={0} opacity={0.3}
-                                                backgroundImage="radial-gradient(circle at 50% 50%, rgba(214, 158, 46, 0.5) 1px, transparent 1px)"
-                                                bgSize="12px 12px"
+                                                position="absolute" inset={0} opacity={0.4}
+                                                backgroundImage="radial-gradient(circle at 50% 50%, rgba(214, 158, 46, 0.4) 1.5px, transparent 1.5px)"
+                                                bgSize="14px 14px"
+                                            />
+                                            {/* Rim Light Effect */}
+                                            <Box
+                                                position="absolute" inset="0"
+                                                borderRadius="lg"
+                                                boxShadow="inset 0 0 10px rgba(255,255,255,0.1), inset 0 0 2px rgba(214, 158, 46, 0.3)"
+                                                css={{ pointerEvents: 'none' }}
                                             />
                                             <Box
                                                 position="absolute" inset="5px"
-                                                border="1px solid rgba(214, 158, 46, 0.4)"
+                                                border="1px solid rgba(214, 158, 46, 0.5)"
                                                 borderRadius="md"
                                             />
                                         </Box>
@@ -227,9 +292,11 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
                         left="0"
                         right="0"
                         textAlign="center"
-                        color="whiteAlpha.500"
-                        fontSize="xs"
+                        color="whiteAlpha.600"
+                        fontSize="sm"
+                        fontWeight="medium"
                         pointerEvents="none"
+                        textShadow="0 2px 4px black"
                     >
                         Swipe & Tap to Select
                     </Text>
@@ -245,27 +312,29 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
                     style={{ perspective: 1000 }}
                 >
                     {/* Guidance Text */}
-                    <MotionBox
-                        position="absolute"
-                        top="-550px"
-                        left="-150px"
-                        w="300px"
-                        textAlign="center"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{
-                            duration: 1.5,
-                            repeat: Infinity,
-                            repeatType: "reverse",
-                            ease: "easeInOut"
-                        }}
-                        pointerEvents="none"
-                    >
-                        <Text color="brand.200" fontFamily="serif" fontStyle="italic" opacity={0.8} fontSize="lg">
-                            ✨ Pick a card from the deck ✨
-                        </Text>
-                        <Box borderLeft="1px solid" borderColor="brand.200" h="40px" w="0px" mx="auto" mt={2} opacity={0.5} />
-                    </MotionBox>
+                    {selectedIndices.length < 3 && (
+                        <MotionBox
+                            position="absolute"
+                            top="-550px"
+                            left="-150px"
+                            w="300px"
+                            textAlign="center"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{
+                                duration: 1.5,
+                                repeat: Infinity,
+                                repeatType: "reverse",
+                                ease: "easeInOut"
+                            }}
+                            pointerEvents="none"
+                        >
+                            <Text color="brand.200" fontFamily="serif" fontStyle="italic" opacity={0.8} fontSize="lg">
+                                ✨ Pick a card from the deck ✨
+                            </Text>
+                            <Box borderLeft="1px solid" borderColor="brand.200" h="40px" w="0px" mx="auto" mt={2} opacity={0.5} />
+                        </MotionBox>
+                    )}
 
                     <AnimatePresence>
                         {Array.from({ length: CARDS_COUNT }).map((_, i) => {
@@ -279,39 +348,35 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
                                     position="absolute"
                                     left={0}
                                     bottom={0}
-                                    w="120px" // Corrected Aspect Ratio Width (approx 200/1.7 = 117) -> 120px
-                                    h="200px" // Height 200px
+                                    w="120px"
+                                    h="200px"
                                     borderRadius="lg"
                                     bg="brand.900"
                                     border="1px solid"
-                                    borderColor="brand.800"
+                                    borderColor="brand.700"
                                     cursor="pointer"
+                                    onHoverStart={() => setHoveredIndex(i)}
+                                    // We don't strictly need onHoverEnd if we want 'last hovered' to stay or just snap back on mouse leave div
+                                    onHoverEnd={() => setHoveredIndex(null)}
                                     onClick={() => handleSelect(i)}
                                     initial={{ y: 0, opacity: 0 }}
                                     animate={{
                                         x: style.x,
                                         y: style.y,
                                         rotate: style.rotation,
-                                        zIndex: style.zIndex,
-                                        opacity: 1
+                                        zIndex: hoveredIndex === i ? 1000 : style.zIndex, // boost z-index on hover
+                                        opacity: 1,
+                                        transition: { type: "spring", stiffness: 120, damping: 14 } // Smooth movement for neighbors
                                     }}
                                     whileHover={{
-                                        scale: 1.15, // Increased Scale (was 1.2, but card is bigger now, 1.15 is good)
-                                        y: style.y - 30, // Reduced Levitation (was -100, then -60, now -30)
-                                        zIndex: 1000,
-                                        boxShadow: '0 0 50px rgba(214, 158, 46, 0.7), 0 0 15px white',
-                                        borderColor: 'brand.200'
-                                    }}
-                                    transition={{
-                                        duration: 0.8,
-                                        delay: i * 0.005,
-                                        type: "spring",
-                                        stiffness: 80
+                                        scale: 1.25,
+                                        y: style.y - 60, // Clear 'pop up'
+                                        boxShadow: '0 0 40px rgba(214, 158, 46, 0.6), 0 0 10px white',
+                                        borderColor: 'brand.300'
                                     }}
                                     transformOrigin="bottom center"
                                     style={{
-                                        marginLeft: '-60px', // Half of new width (120/2)
-                                        marginBottom: '0px'
+                                        marginLeft: '-60px',
                                     }}
                                 >
                                     <Box
@@ -322,19 +387,27 @@ const CardSelectionScreen = ({ onComplete }: CardSelectionScreenProps) => {
                                         position="relative"
                                     >
                                         <Box w="full" h="full" bgGradient="linear(to-br, #1a202c, #2d3748)" />
+                                        {/* Texture */}
                                         <Box
-                                            position="absolute" inset={0} opacity={0.3}
-                                            backgroundImage="radial-gradient(circle at 50% 50%, rgba(214, 158, 46, 0.5) 1px, transparent 1px)"
-                                            bgSize="12px 12px"
+                                            position="absolute" inset={0} opacity={0.4}
+                                            backgroundImage="radial-gradient(circle at 50% 50%, rgba(214, 158, 46, 0.6) 1.5px, transparent 1.5px)"
+                                            bgSize="14px 14px"
+                                        />
+                                        {/* Rim Light / Glow Overlay */}
+                                        <Box
+                                            position="absolute" inset="0"
+                                            className="rim-light"
+                                            boxShadow="inset 0 0 15px rgba(214, 158, 46, 0.2)"
+                                            borderRadius="lg"
                                         />
                                         <Box
                                             position="absolute" inset="6px"
-                                            border="1px solid rgba(214, 158, 46, 0.4)"
+                                            border="1px solid rgba(214, 158, 46, 0.5)"
                                             borderRadius="md"
                                         />
                                         <Box
                                             position="absolute" top="50%" left="50%" transform="translate(-50%, -50%)"
-                                            w="30px" h="30px" border="1px solid rgba(214, 158, 46, 0.2)" borderRadius="full"
+                                            w="30px" h="30px" border="1px solid rgba(214, 158, 46, 0.3)" borderRadius="full"
                                         />
                                     </Box>
                                 </MotionBox>
