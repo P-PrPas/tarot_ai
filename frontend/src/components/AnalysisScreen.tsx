@@ -66,7 +66,7 @@ const AnalysisScreen = ({ selectedIndices, intention, onReset }: AnalysisScreenP
                 </Heading>
             </VStack>
 
-            <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4} w="full" maxW="1000px">
+            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={8} w="full" maxW="1000px" justifyItems="center">
                 {cards.map((card, index) => (
                     <MotionBox
                         key={index}
